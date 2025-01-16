@@ -225,6 +225,10 @@ class PdfPipelineOptions(PipelineOptions):
     artifacts_path: Optional[Union[Path, str]] = None
     do_table_structure: bool = True  # True: perform table structure extraction
     do_ocr: bool = True  # True: perform OCR, replace programmatic PDF text
+    force_backend_text: bool = (
+        False  # (To be used with vlms, or other generative models)
+    )
+    # If True, text from backend will be used instead of generated text
 
     table_structure_options: TableStructureOptions = TableStructureOptions()
     ocr_options: Union[
