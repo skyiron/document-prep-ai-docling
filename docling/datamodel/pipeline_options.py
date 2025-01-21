@@ -189,6 +189,14 @@ class OcrMacOptions(OcrOptions):
     )
 
 
+class SmolDoclingOptions(BaseModel):
+    artifacts_path: str = ""
+    question: str = "Perform Layout Analysis."
+    load_in_8bit: bool = True
+    llm_int8_threshold: float = 6.0
+    quantized: bool = False
+
+
 # Define an enum for the backend options
 class PdfBackend(str, Enum):
     """Enum of valid PDF backends."""
@@ -238,6 +246,8 @@ class PdfPipelineOptions(PipelineOptions):
         OcrMacOptions,
         RapidOcrOptions,
     ] = Field(EasyOcrOptions(), discriminator="kind")
+
+    vlm_options: Union[SmolDoclingOptions,] = Field(SmolDoclingOptions())
 
     images_scale: float = 1.0
     generate_page_images: bool = False
