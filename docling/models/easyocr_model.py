@@ -21,6 +21,12 @@ from docling.utils.profiling import TimeRecorder
 _log = logging.getLogger(__name__)
 
 
+def unwrap_dataparallel(model):
+    if isinstance(model, torch.nn.DataParallel):
+        return model.module
+    return model
+
+
 class EasyOcrModel(BaseOcrModel):
     def __init__(
         self,
@@ -51,6 +57,7 @@ class EasyOcrModel(BaseOcrModel):
                         for x in [
                             AcceleratorDevice.CUDA.value,
                             AcceleratorDevice.MPS.value,
+                            "cuda:",
                         ]
                     ]
                 )
@@ -69,6 +76,12 @@ class EasyOcrModel(BaseOcrModel):
                 recog_network=self.options.recog_network,
                 download_enabled=self.options.download_enabled,
                 verbose=False,
+            )
+
+            self.reader.device = device
+            self.reader.detector = unwrap_dataparallel(self.reader.detector).to(device)
+            self.reader.recognizer = unwrap_dataparallel(self.reader.recognizer).to(
+                device
             )
 
     def __call__(
