@@ -230,7 +230,7 @@ granite_picture_description = PictureDescriptionVlmOptions(
 
 
 class SmolDoclingOptions(BaseModel):
-    question: str = "Perform Layout Analysis."
+    question: str = "Convert this page to docling."  # "Perform Layout Analysis."
     load_in_8bit: bool = True
     llm_int8_threshold: float = 6.0
     quantized: bool = False
