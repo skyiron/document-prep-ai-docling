@@ -1,6 +1,7 @@
 import itertools
 import logging
 import re
+import warnings
 
 # from io import BytesIO
 from pathlib import Path
@@ -28,7 +29,8 @@ from docling.backend.abstract_backend import AbstractDocumentBackend
 from docling.backend.pdf_backend import PdfDocumentBackend
 from docling.datamodel.base_models import Page
 from docling.datamodel.document import ConversionResult
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions, VlmPipelineOptions
+from docling.datamodel.settings import settings
 from docling.models.smol_docling_model import SmolDoclingModel
 from docling.pipeline.base_pipeline import PaginatedPipeline
 from docling.utils.profiling import ProfilingScope, TimeRecorder
@@ -38,9 +40,28 @@ _log = logging.getLogger(__name__)
 
 class VlmPipeline(PaginatedPipeline):
 
-    def __init__(self, pipeline_options: PdfPipelineOptions):
+    def __init__(self, pipeline_options: VlmPipelineOptions):
         super().__init__(pipeline_options)
-        self.pipeline_options: PdfPipelineOptions
+
+        warnings.warn(
+            "This API is currently experimental and may change in upcoming versions without notice.",
+            category=UserWarning,
+            stacklevel=2,
+        )
+
+        self.pipeline_options: VlmPipelineOptions
+
+        artifacts_path: Optional[Path] = None
+        if pipeline_options.artifacts_path is not None:
+            artifacts_path = Path(pipeline_options.artifacts_path).expanduser()
+        elif settings.artifacts_path is not None:
+            artifacts_path = Path(settings.artifacts_path).expanduser()
+
+        if artifacts_path is not None and not artifacts_path.is_dir():
+            raise RuntimeError(
+                f"The value of {artifacts_path=} is not valid. "
+                "When defined, it must point to a folder containing all models required by the pipeline."
+            )
 
         # force_backend_text = False - use text that is coming from SmolDocling
         # force_backend_text = True - get text from backend using bounding boxes predicted by SmolDoclingss
@@ -96,14 +117,14 @@ class VlmPipeline(PaginatedPipeline):
             self.artifacts_path = Path(pipeline_options.artifacts_path)
         """
 
-        keep_images = (
+        self.keep_images = (
             self.pipeline_options.generate_page_images
             or self.pipeline_options.generate_picture_images
-            or self.pipeline_options.generate_table_images
         )
 
         self.build_pipe = [
             SmolDoclingModel(
+                artifacts_path=artifacts_path,
                 accelerator_options=pipeline_options.accelerator_options,
                 vlm_options=self.pipeline_options.vlm_options,
             ),
@@ -147,7 +168,7 @@ class VlmPipeline(PaginatedPipeline):
             # Generate images of the requested element types
             if (
                 self.pipeline_options.generate_picture_images
-                or self.pipeline_options.generate_table_images
+                # or self.pipeline_options.generate_table_images
             ):
                 scale = self.pipeline_options.images_scale
                 for element, _level in conv_res.document.iterate_items():
@@ -156,9 +177,6 @@ class VlmPipeline(PaginatedPipeline):
                     if (
                         isinstance(element, PictureItem)
                         and self.pipeline_options.generate_picture_images
-                    ) or (
-                        isinstance(element, TableItem)
-                        and self.pipeline_options.generate_table_images
                     ):
                         page_ix = element.prov[0].page_no - 1
                         page = conv_res.pages[page_ix]

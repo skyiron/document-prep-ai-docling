@@ -28,17 +28,27 @@ _log = logging.getLogger(__name__)
 
 class SmolDoclingModel(BasePageModel):
 
+    _repo_id: str = "ds4sd/SmolDocling-250m-preview"
+
     def __init__(
         self,
+        artifacts_path: Optional[Path],
         accelerator_options: AcceleratorOptions,
         vlm_options: SmolDoclingOptions,
     ):
         device = decide_device(accelerator_options.device)
         self.device = device
-        _log.info("Available device for SmolDocling: {}".format(device))
+
+        _log.debug("Available device for SmolDocling: {}".format(device))
+
+        repo_cache_folder = self._repo_id.replace("/", "--")
 
         # PARAMETERS:
-        artifacts_path = Path(vlm_options.artifacts_path)
+        if artifacts_path is None:
+            artifacts_path = self.download_models()
+        elif (artifacts_path / repo_cache_folder).exists():
+            artifacts_path = artifacts_path / repo_cache_folder
+
         self.param_question = vlm_options.question  # "Perform Layout Analysis."
         self.param_quantization_config = BitsAndBytesConfig(
             load_in_8bit=vlm_options.load_in_8bit,  # True,
@@ -50,7 +60,7 @@ class SmolDoclingModel(BasePageModel):
         if not self.param_quantized:
             self.vlm_model = Idefics3ForConditionalGeneration.from_pretrained(
                 artifacts_path,
-                device_map=device,
+                # device_map=device,
                 torch_dtype=torch.bfloat16,
                 # _attn_implementation="flash_attention_2",
             )
@@ -58,10 +68,30 @@ class SmolDoclingModel(BasePageModel):
         else:
             self.vlm_model = Idefics3ForConditionalGeneration.from_pretrained(
                 artifacts_path,
-                device_map=device,
+                # device_map=device,
                 torch_dtype="auto",
                 quantization_config=self.param_quantization_config,
-            )
+            ).to(device)
+
+    @staticmethod
+    def download_models(
+        local_dir: Optional[Path] = None,
+        force: bool = False,
+        progress: bool = False,
+    ) -> Path:
+        from huggingface_hub import snapshot_download
+        from huggingface_hub.utils import disable_progress_bars
+
+        if not progress:
+            disable_progress_bars()
+        download_path = snapshot_download(
+            repo_id=SmolDoclingModel._repo_id,
+            force_download=force,
+            local_dir=local_dir,
+            # revision="v0.0.1",
+        )
+
+        return Path(download_path)
 
     def __call__(
         self, conv_res: ConversionResult, page_batch: Iterable[Page]
