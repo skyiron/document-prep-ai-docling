@@ -230,7 +230,7 @@ granite_picture_description = PictureDescriptionVlmOptions(
 
 
 class SmolDoclingOptions(BaseModel):
-    question: str = "Convert this page to docling."  # "Perform Layout Analysis."
+    question: str = "Convert this page to docling."
     load_in_8bit: bool = True
     llm_int8_threshold: float = 6.0
     quantized: bool = False
@@ -275,6 +275,7 @@ class PaginatedPipelineOptions(PipelineOptions):
 
 class VlmPipelineOptions(PaginatedPipelineOptions):
     artifacts_path: Optional[Union[Path, str]] = None
+    do_vlm: bool = True  # True: perform inference of Visual Language Model
 
     force_backend_text: bool = (
         False  # (To be used with vlms, or other generative models)
