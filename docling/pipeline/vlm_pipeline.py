@@ -42,6 +42,7 @@ class VlmPipeline(PaginatedPipeline):
 
     def __init__(self, pipeline_options: VlmPipelineOptions):
         super().__init__(pipeline_options)
+        self.keep_backend = True
 
         warnings.warn(
             "This API is currently experimental and may change in upcoming versions without notice.",
